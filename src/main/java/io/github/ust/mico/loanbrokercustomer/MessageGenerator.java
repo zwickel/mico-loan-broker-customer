@@ -1,5 +1,8 @@
 package io.github.ust.mico.loanbrokercustomer;
 
+import java.util.Random;
+import java.util.UUID;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,8 +24,6 @@ public class MessageGenerator {
   @Autowired
   private Sender sender;
 
-  private int ssn = 0;
-
   public MessageGenerator(Sender sender) {
     this.sender = sender;
     try {
@@ -40,16 +41,22 @@ public class MessageGenerator {
   }
 
   private void produceMessage() {
+    // Create message.
     MicoCloudEventImpl<JsonNode> cloudEvent = new MicoCloudEventImpl<JsonNode>();
+    // Fill base fields.
     cloudEvent.setRandomId();
     cloudEvent.setBaseCloudEvent(cloudEvent);
     CloudEventManipulator cloudEventManipulator = new CloudEventManipulator();
     cloudEventManipulator.setMissingHeaderFields(cloudEvent, "");
     // Set return address.
     cloudEvent.setReturnTopic("retour");
+    // Create loan request.
     ObjectNode data = JsonNodeFactory.instance.objectNode();
-    data.put("SSN", this.ssn += 1);
+    data.put("SSN", UUID.randomUUID().toString());
+    data.put("loan", Math.round(new Random().ints(10000, 100000 + 1).findFirst().getAsInt() / 5000) * 5000);
+    data.put("term", Math.round(new Random().ints(12, 48 + 1).findFirst().getAsInt() / 12) * 12);
     cloudEvent.setData(data);
+    // Log and send.
     log.debug("Created msg: '{}'", cloudEvent);
     sender.send(cloudEvent);
   }
